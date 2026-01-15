@@ -1,19 +1,21 @@
 import os
 import json
 import requests
+import random
 from dotenv import load_dotenv
 from openai import OpenAI
 
 # Load environment variables
 load_dotenv()
 
-# Initialize client (expects OPENAI_API_KEY in env)
-try:
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-except Exception:
-    client = None
+# Initialize OpenAI Client (Graceful fallback)
+client = None
+if os.getenv("OPENAI_API_KEY"):
+    try:
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    except Exception as e:
+        print(f"Failed to init OpenAI: {e}")
 
-UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
 def fetch_pexels_media(query: str) -> dict:
@@ -43,9 +45,9 @@ def fetch_pexels_media(query: str) -> dict:
         if response_vid.status_code == 200:
             data = response_vid.json()
             if data.get("videos"):
-                # Get the best quality video file (usually the first one or high res)
+                # Get the best quality video file
                 video_files = data["videos"][0]["video_files"]
-                # Sort by quality/width to get a decent one, preferably 720p or 1080p
+                # Prefer HD
                 video = next((v for v in video_files if v["quality"] == "hd" or v["width"] >= 1280), video_files[0])
                 media["video_url"] = video["link"]
 
@@ -54,181 +56,145 @@ def fetch_pexels_media(query: str) -> dict:
 
     return media
 
-def fetch_unsplash_image(query: str) -> str:
-    """Fetch a relevant image from Unsplash as fallback."""
-    if not UNSPLASH_ACCESS_KEY or UNSPLASH_ACCESS_KEY == "your_unsplash_access_key_here":
-        return None
-    
-    try:
-        url = "https://api.unsplash.com/search/photos"
-        params = {
-            "query": query,
-            "client_id": UNSPLASH_ACCESS_KEY,
-            "per_page": 1,
-            "orientation": "landscape"
-        }
-        response = requests.get(url, params=params, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            if data["results"]:
-                return data["results"][0]["urls"]["regular"]
-    except Exception as e:
-        print(f"Error fetching Unsplash image: {e}")
-    
-    return None
-
 class TripAI:
     def __init__(self):
-        pass
+        self.destinations = []
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            json_path = os.path.join(base_dir, "data", "destinations.json")
+            with open(json_path, "r") as f:
+                data = json.load(f)
+                self.destinations = data.get("destinations", [])
+            print(f"Loaded {len(self.destinations)} destinations from JSON.")
+        except Exception as e:
+            print(f"Error loading destinations.json: {e}")
+            self.destinations = []
 
-    def generate_trips(self, query: str) -> dict:
-        """
-        Generates structured trip ideas based on a user query using an LLM.
-        """
-        if not client:
-            print("No OpenAI API Key found, returning mock data.")
-            return self._get_mock_data(query)
-
+    def _match_with_openai(self, query: str) -> list:
+        """Use OpenAI to semantically match destinations from the Excel list."""
+        if not client or not self.destinations:
+            return []
+            
+        # Create a condensed list for the prompt
+        dest_summary = [f"{d['Destination']} ({d['Type']}, {d['State / UT']})" for d in self.destinations]
+        
         prompt = f"""
-        You are a travel expert AI specializing in India. The user is looking for a weekend trip within India or nearby.
+        You are a smart travel assistant.
         User Query: "{query}"
-
-        Generate 3 distinct weekend trip ideas based on this query.
-        Return ONLY valid JSON in the following format:
-        {{
-            "trips": [
-                {{
-                    "id": 1,
-                    "title": "Catchy Title",
-                    "location": "City, State",
-                    "description": "2-3 sentence description of why this is perfect.",
-                    "price": "₹Estimate",
-                    "duration": "e.g. 2 Nights / 3 Days",
-                    "rating": 4.5,
-                    "attractions": ["Attraction 1", "Attraction 2", "Attraction 3"],
-                    "image_query": "search term for image"
-                }}
-            ]
-        }}
+        
+        Available Destinations:
+        {json.dumps(dest_summary)}
+        
+        Select the top 3-5 destinations from the list that semantically match the query.
+        Return ONLY a JSON list of the exact destination names (e.g. "Goa"). 
+        Example: ["Goa", "Manali"]
         """
-
+        
         try:
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[{"role": "system", "content": "You are a helpful travel assistant."},
-                          {"role": "user", "content": prompt}],
-                max_tokens=800
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=150,
+                temperature=0.3
             )
-            content = response.choices[0].message.content
-            data = json.loads(content)
+            content = response.choices[0].message.content.strip()
+            if content.startswith("```json"):
+                content = content.replace("```json", "").replace("```", "")
             
-            # Enhance with Pexels (primary) or Unsplash (fallback)
-            for trip in data.get("trips", []):
-                image_query = trip.get("image_query", trip["location"])
-                
-                # Try Pexels first
-                pexels_media = fetch_pexels_media(image_query)
-                trip["image_url"] = pexels_media.get("image_url")
-                trip["video_url"] = pexels_media.get("video_url")
-
-                # Fallback to Unsplash for image if Pexels failed
-                if not trip["image_url"]:
-                     trip["image_url"] = fetch_unsplash_image(image_query) or "/images/default_trip.png"
-                
-            return data
-            
+            matched_names = json.loads(content)
+            matches = [d for d in self.destinations if d['Destination'] in matched_names]
+            return matches
         except Exception as e:
-            print(f"OpenAI Error: {e}")
-            return self._get_mock_data(query)
+            print(f"OpenAI semantic search error: {e}")
+            return []
 
-    def _get_mock_data(self, query: str) -> dict:
-        """Returns mock data with Pexels/Unsplash integration."""
+    def get_destination_by_slug(self, slug: str) -> dict:
+        """Find a destination by slug."""
+        dest = next((d for d in self.destinations if d.get("slug") == slug), None)
+        if dest:
+            # Enrich with Pexels
+            query = dest.get("Destination", "") + " " + dest.get("Type", "travel")
+            media = fetch_pexels_media(query)
+            dest["image_url"] = media["image_url"]
+            dest["video_url"] = media["video_url"]
+        return dest
+
+    def get_suggestions(self, query: str) -> list:
+        """Get a list of destination names matching the query."""
+        if not query:
+            return []
         
-        # Define base mock data
-        trips = [
-            {
-                "id": 1,
-                "title": "River Rafting Adventure",
-                "location": "Rishikesh, Uttarakhand",
-                "description": f"Experience the thrill of white water rafting on the Ganges. Perfect for adventure seekers.",
-                "price": "₹6,000",
-                "duration": "1 Night / 2 Days",
-                "rating": 4.8,
-                "attractions": ["Laxman Jhula", "Triveni Ghat", "Beatles Ashram"],
-                "image_query": "rafting rishikesh"
-            },
-            {
-                "id": 2,
-                "title": "Beachside Relaxation",
-                "location": "Goa, India",
-                "description": "Unwind at a luxury villa near the beach. Enjoy seafood and sunsets.",
-                "price": "₹15,000",
-                "duration": "2 Nights / 3 Days",
-                "rating": 4.7,
-                "attractions": ["Baga Beach", "Fort Aguada", "Dudhsagar Falls"],
-                "image_query": "goa beach sunset"
-            },
-             {
-                "id": 3,
-                "title": "Mountain Retreat",
-                "location": "Manali, Himachal Pradesh",
-                "description": "Escape to the mountains for cool air and scenic views.",
-                "price": "₹10,000",
-                "duration": "3 Nights / 4 Days",
-                "rating": 4.9,
-                "attractions": ["Solang Valley", "Rohtang Pass", "Hidimba Devi Temple"],
-                "image_query": "manali mountains"
-            }
-        ]
+        query_lower = query.lower()
+        suggestions = []
         
-        # Enrich with real images/videos
-        for trip in trips:
-            # Try Pexels
-            pexels_media = fetch_pexels_media(trip["image_query"])
-            trip["image_url"] = pexels_media.get("image_url")
-            trip["video_url"] = pexels_media.get("video_url")
+        # Fast prefix/substring match
+        for dest in self.destinations:
+            name = dest.get("Destination", "")
+            if query_lower in name.lower():
+                suggestions.append(name)
+        
+        return suggestions[:5]
+
+    def generate_trips(self, query: str) -> dict:
+        """
+        Search for trips within the loaded JSON data.
+        """
+        if not self.destinations:
+            return {"trips": []}
+
+        query_lower = query.lower()
+        matches = []
+        
+        # 1. Keyword Search
+        for dest in self.destinations:
+            search_text = (
+                f"{dest.get('Destination')} {dest.get('State / UT')} "
+                f"{dest.get('Type')} {dest.get('Famous For')}"
+            ).lower()
+            if query_lower in search_text:
+                matches.append(dest)
+        
+        # 2. Semantic Search (if few matches)
+        if len(matches) < 2 and client:
+            print("Using OpenAI for semantic search...")
+            semantic_matches = self._match_with_openai(query)
+            existing_ids = {m.get('id') for m in matches}
+            for m in semantic_matches:
+                if m.get('id') not in existing_ids:
+                    matches.append(m)
+        
+        # 3. Fallback
+        if not matches:
+             matches = random.sample(self.destinations, min(3, len(self.destinations)))
+        
+        # Limit results
+        results = matches[:6]
+        
+        # Transform & Enrich
+        trips = []
+        for dest in results:
+            image_query = dest.get("Destination") + " " + dest.get("Type", "travel")
+            media = fetch_pexels_media(image_query)
             
-            # Fallback based on specific locations if Media fails
-            if not trip["image_url"]:
-                # Try Unsplash
-                trip["image_url"] = fetch_unsplash_image(trip["image_query"])
-                
-                # Final Local Fallback
-                if not trip["image_url"]:
-                    if "rishikesh" in trip["image_query"].lower():
-                        trip["image_url"] = "/images/trip_rishikesh.png" 
-                    elif "goa" in trip["image_query"].lower():
-                        trip["image_url"] = "/images/trip_goa.png"
-                    else:
-                        trip["image_url"] = "/images/bg_slide_1.png"
+            trips.append({
+                "id": dest.get("id"),
+                "slug": dest.get("slug"),
+                "title": dest.get("Destination"),
+                "location": f"{dest.get('Destination')}, {dest.get('State / UT')}",
+                "description": dest.get("Short Description", f"Explore {dest.get('Destination')}"),
+                "price": "₹5,000 - ₹15,000", 
+                "duration": f"{dest.get('Ideal Duration')} Days",
+                "rating": 4.5,
+                "attractions": [t.strip() for t in dest.get("Famous For", "").split(",")],
+                "image_url": media["image_url"] or "/images/default_trip.png",
+                "video_url": media["video_url"],
+                "tags": [dest.get("Type"), dest.get("Best Time to Visit")]
+            })
 
         return {"trips": trips}
 
     def get_random_background_image(self, query: str = "nature,travel,india") -> dict:
-        """Fetch a random background image from Unsplash with credits."""
-        if not UNSPLASH_ACCESS_KEY or UNSPLASH_ACCESS_KEY == "your_unsplash_access_key_here":
-            return None
-        
-        try:
-            url = "https://api.unsplash.com/photos/random"
-            params = {
-                "query": query,
-                "client_id": UNSPLASH_ACCESS_KEY,
-                "orientation": "landscape"
-            }
-            response = requests.get(url, params=params, timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                return {
-                    "image_url": data["urls"]["regular"],
-                    "photographer_name": data["user"]["name"],
-                    "photographer_username": data["user"]["username"],
-                    "unsplash_url": "https://unsplash.com/?utm_source=weekend_traveller&utm_medium=referral"
-                }
-        except Exception as e:
-            print(f"Error fetching random background: {e}")
-        
-        return None
+        return fetch_pexels_media(query).get("image_url")
 
     def get_random_background_video(self, query: str = "timelapse,hyperlapse,city traffic,clouds moving") -> dict:
         """Fetch a random background video (timelapse) from Pexels."""
@@ -236,31 +202,21 @@ class TripAI:
             return None
 
         headers = {"Authorization": PEXELS_API_KEY}
-        
         try:
-            # Search for videos
             url = "https://api.pexels.com/videos/search"
-            # We want landscape, decent quality. Pexels search results are usually good.
             params = {
                 "query": query,
-                "per_page": 5, # Fetch a few to randomize? Or just 1. Let's fetch 1 for speed.
+                "per_page": 5, 
                 "orientation": "landscape",
                 "min_width": 1280
             }
-            
             response = requests.get(url, headers=headers, params=params, timeout=5)
-            
             if response.status_code == 200:
                 data = response.json()
                 if data.get("videos"):
-                    # Pick the first one
                     video_data = data["videos"][0]
                     video_files = video_data["video_files"]
-                    
-                    # Find best suitable file (HD, not 4k if possible to save bandwidth, but good quality)
-                    # changing logic to prefer HD (1280x720 or 1920x1080)
                     video_file = next((v for v in video_files if v["width"] == 1920 or v["width"] == 1280), video_files[0])
-                    
                     return {
                         "video_url": video_file["link"],
                         "photographer_name": video_data["user"]["name"],
@@ -269,5 +225,4 @@ class TripAI:
                     }
         except Exception as e:
             print(f"Error fetching background video: {e}")
-            
         return None

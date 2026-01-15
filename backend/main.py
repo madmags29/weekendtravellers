@@ -30,19 +30,7 @@ def search_trips(search: SearchQuery):
     results = ai_service.generate_trips(search.query)
     return results
 
-@app.get("/api/background")
-def get_background(query: str = "nature,travel,india"):
-    """Get a random background image."""
-    result = ai_service.get_random_background_image(query)
-    if not result:
-        # Fallback if API fails or no key
-        return {
-            "image_url": "/images/bg_slide_1.png",
-            "photographer_name": None,
-            "photographer_username": None,
-            "unsplash_url": None
-        }
-    return result
+
 
 @app.get("/api/video/background")
 def get_background_video(query: str = "timelapse,hyperlapse,nature motion,city lights"):
@@ -52,3 +40,16 @@ def get_background_video(query: str = "timelapse,hyperlapse,nature motion,city l
         # Fallback - return None or a specific error indicator, frontend handles fallback
         return {"video_url": None}
     return result
+
+@app.get("/api/destinations/{slug}")
+def get_destination(slug: str):
+    """Get destination details by slug."""
+    result = ai_service.get_destination_by_slug(slug)
+    if not result:
+        return {"error": "Destination not found"}
+    return result
+
+@app.get("/api/destinations/suggest")
+def suggest_destinations(q: str):
+    """Get autocomplete suggestions."""
+    return ai_service.get_suggestions(q)

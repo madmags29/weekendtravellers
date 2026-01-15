@@ -35,7 +35,7 @@ export default function BackgroundSlider() {
                         priority={index === 0}
                     />
                     {/* Overlay for readability */}
-                    <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-[2px]"></div>
+                    <div className="absolute inset-0 bg-slate-950/80"></div>
                 </div>
             ))}
         </div>

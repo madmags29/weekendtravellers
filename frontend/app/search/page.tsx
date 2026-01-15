@@ -117,7 +117,7 @@ export default function SearchPage() {
     return (
         <main className="min-h-screen">
             {/* Simple header */}
-            <div className="bg-white/5 backdrop-blur-md border-b border-white/10 py-4 px-6 mb-8 sticky top-0 z-50">
+            <div className="bg-gray-900 border-b border-gray-800 py-4 px-6 mb-8 sticky top-0 z-50">
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <a href="/" className="flex items-center gap-3 group">
                         <div className="relative w-8 h-8">

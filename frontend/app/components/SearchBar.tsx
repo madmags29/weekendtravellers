@@ -26,7 +26,7 @@ export default function SearchBar() {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Where do you want to go this weekend? (e.g., 'Hiking in Himachal')"
-                        className="w-full px-6 py-4 text-lg text-white placeholder-gray-400 bg-white/10 backdrop-blur-lg border border-white/10 rounded-full focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:bg-white/15 transition-all duration-300"
+                        className="w-full px-6 py-4 text-lg text-white placeholder-gray-400 bg-gray-900 border border-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:bg-gray-800 transition-all duration-300"
                     />
                     <button
                         type="submit"

@@ -12,7 +12,7 @@ interface TripCardProps {
 
 export default function TripCard({ title, location, description, price, imageUrl, duration, rating }: TripCardProps) {
     return (
-        <div className="flex flex-col rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-xl hover:bg-white/10 transition-all duration-300 overflow-hidden group">
+        <div className="flex flex-col rounded-2xl border border-gray-800 bg-gray-900 shadow-xl hover:bg-gray-800 transition-all duration-300 overflow-hidden group">
             {imageUrl && (
                 <div className="relative h-48 w-full overflow-hidden">
                     <Image

@@ -67,6 +67,7 @@ class TripAI:
                     "price": "₹Estimate",
                     "duration": "e.g. 2 Nights / 3 Days",
                     "rating": 4.5,
+                    "attractions": ["Attraction 1", "Attraction 2", "Attraction 3"],
                     "image_query": "search term for image"
                 }}
             ]
@@ -78,7 +79,7 @@ class TripAI:
                 model="gpt-3.5-turbo",
                 messages=[{"role": "system", "content": "You are a helpful travel assistant."},
                           {"role": "user", "content": prompt}],
-                max_tokens=600
+                max_tokens=800
             )
             content = response.choices[0].message.content
             data = json.loads(content)
@@ -107,6 +108,7 @@ class TripAI:
                 "price": "₹6,000",
                 "duration": "1 Night / 2 Days",
                 "rating": 4.8,
+                "attractions": ["Laxman Jhula", "Triveni Ghat", "Beatles Ashram"],
                 "image_query": "rafting rishikesh"
             },
             {
@@ -117,6 +119,7 @@ class TripAI:
                 "price": "₹15,000",
                 "duration": "2 Nights / 3 Days",
                 "rating": 4.7,
+                "attractions": ["Baga Beach", "Fort Aguada", "Dudhsagar Falls"],
                 "image_query": "goa beach sunset"
             },
              {
@@ -127,6 +130,7 @@ class TripAI:
                 "price": "₹10,000",
                 "duration": "3 Nights / 4 Days",
                 "rating": 4.9,
+                "attractions": ["Solang Valley", "Rohtang Pass", "Hidimba Devi Temple"],
                 "image_query": "manali mountains"
             }
         ]
@@ -139,11 +143,7 @@ class TripAI:
             # Fallback based on specific locations if Unsplash fails
             if not unsplash_url:
                 if "rishikesh" in trip["image_query"].lower():
-                    unsplash_url = "/images/trip_rishikesh.png" # Assuming these exist from previous steps? 
-                    # Actually, better to use the ones I saw in list_dir if they exist, or just valid verify paths.
-                    # list_dir showed: search_results_india_...png, etc.
-                    # But the frontend expects served images.
-                    # Previous code had: rishikesh_img = "/images/trip_rishikesh.png"
+                    unsplash_url = "/images/trip_rishikesh.png" 
                 elif "goa" in trip["image_query"].lower():
                     unsplash_url = "/images/trip_goa.png"
                 else:

@@ -13,6 +13,7 @@ interface Trip {
     price: string;
     duration?: string;
     rating?: number;
+    attractions?: string[];
     image_url?: string;
 }
 
@@ -100,6 +101,7 @@ function SearchResultsContent() {
                             price={trip.price}
                             duration={trip.duration}
                             rating={trip.rating}
+                            attractions={trip.attractions}
                             imageUrl={trip.image_url}
                         />
                     ))}

@@ -8,9 +8,10 @@ interface TripCardProps {
     imageUrl?: string;
     duration?: string;
     rating?: number;
+    attractions?: string[];
 }
 
-export default function TripCard({ title, location, description, price, imageUrl, duration, rating }: TripCardProps) {
+export default function TripCard({ title, location, description, price, imageUrl, duration, rating, attractions }: TripCardProps) {
     return (
         <div className="flex flex-col rounded-2xl border border-gray-800 bg-gray-900 shadow-xl hover:bg-gray-800 transition-all duration-300 overflow-hidden group">
             {imageUrl && (
@@ -49,8 +50,22 @@ export default function TripCard({ title, location, description, price, imageUrl
                     </div>
                 )}
 
-                <p className="text-gray-300 flex-grow leading-relaxed text-sm">{description}</p>
-                <div className="mt-6 pt-4 border-t border-white/10 flex justify-end">
+                <p className="text-gray-300 flex-grow leading-relaxed text-sm mb-4">{description}</p>
+
+                {attractions && attractions.length > 0 && (
+                    <div className="mb-4">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Travel Points</p>
+                        <div className="flex flex-wrap gap-2">
+                            {attractions.map((point, index) => (
+                                <span key={index} className="px-2 py-1 bg-gray-800 text-cyan-400 text-xs rounded border border-gray-700">
+                                    {point}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="mt-auto pt-4 border-t border-gray-800 flex justify-end">
                     <button className="text-sm font-semibold text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1 group-hover:translate-x-1 duration-300">
                         View Details <span>&rarr;</span>
                     </button>

@@ -152,3 +152,29 @@ class TripAI:
             trip["image_url"] = unsplash_url
 
         return {"trips": trips}
+
+    def get_random_background_image(self, query: str = "nature,travel,india") -> dict:
+        """Fetch a random background image from Unsplash with credits."""
+        if not UNSPLASH_ACCESS_KEY or UNSPLASH_ACCESS_KEY == "your_unsplash_access_key_here":
+            return None
+        
+        try:
+            url = "https://api.unsplash.com/photos/random"
+            params = {
+                "query": query,
+                "client_id": UNSPLASH_ACCESS_KEY,
+                "orientation": "landscape"
+            }
+            response = requests.get(url, params=params, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                return {
+                    "image_url": data["urls"]["regular"],
+                    "photographer_name": data["user"]["name"],
+                    "photographer_username": data["user"]["username"],
+                    "unsplash_url": "https://unsplash.com/?utm_source=weekend_traveller&utm_medium=referral"
+                }
+        except Exception as e:
+            print(f"Error fetching random background: {e}")
+        
+        return None

@@ -29,3 +29,17 @@ ai_service = TripAI()
 def search_trips(search: SearchQuery):
     results = ai_service.generate_trips(search.query)
     return results
+
+@app.get("/api/background")
+def get_background():
+    """Get a random background image."""
+    result = ai_service.get_random_background_image()
+    if not result:
+        # Fallback if API fails or no key
+        return {
+            "image_url": "/images/bg_slide_1.png",
+            "photographer_name": None,
+            "photographer_username": None,
+            "unsplash_url": None
+        }
+    return result

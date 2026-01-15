@@ -1,4 +1,5 @@
 import SearchBar from './components/SearchBar';
+import FeatureCard from './components/FeatureCard';
 
 export default function Home() {
     return (
@@ -28,30 +29,24 @@ export default function Home() {
 
                 <SearchBar />
 
-                <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+                <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-left w-full">
                     <FeatureCard
                         title="AI Powered"
                         description="Smart recommendations based on your preferences."
+                        imageQuery="artificial intelligence, neural network, futuristic technology"
                     />
                     <FeatureCard
                         title="Instant Itineraries"
                         description="Get a full weekend plan in seconds."
+                        imageQuery="travel map, compass, adventure planning"
                     />
                     <FeatureCard
                         title="Hidden Gems"
                         description="Discover places off the beaten path."
+                        imageQuery="secret cave, hidden waterfall, mysterious forest"
                     />
                 </div>
             </div>
         </main>
-    );
-}
-
-function FeatureCard({ title, description }: { title: string; description: string }) {
-    return (
-        <div className="p-6 bg-gray-900 rounded-xl border border-gray-800 hover:bg-gray-800 transition-all duration-300">
-            <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-            <p className="text-gray-400">{description}</p>
-        </div>
     );
 }

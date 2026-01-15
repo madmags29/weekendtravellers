@@ -31,9 +31,9 @@ def search_trips(search: SearchQuery):
     return results
 
 @app.get("/api/background")
-def get_background():
+def get_background(query: str = "nature,travel,india"):
     """Get a random background image."""
-    result = ai_service.get_random_background_image()
+    result = ai_service.get_random_background_image(query)
     if not result:
         # Fallback if API fails or no key
         return {

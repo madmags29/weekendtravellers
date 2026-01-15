@@ -16,6 +16,7 @@ interface Trip {
     attractions?: string[];
     image_url?: string;
     video_url?: string;
+    slug?: string;
 }
 
 interface SearchResponse {
@@ -36,7 +37,7 @@ function SearchResultsContent() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch('/api/search', {
+            const res = await fetch('http://localhost:8000/search', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -68,10 +69,10 @@ function SearchResultsContent() {
 
     return (
         <div className="max-w-6xl mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold text-white mb-2">
-                Trip Ideas for "<span className="text-cyan-400">{query}</span>"
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Trip Ideas for "<span className="text-cyan-600">{query}</span>"
             </h1>
-            <p className="text-gray-400 mb-10">Here are some AI-curated weekend getaways just for you.</p>
+            <p className="text-gray-600 mb-10">Here are some AI-curated weekend getaways just for you.</p>
 
             {loading && (
                 <div className="flex justify-center items-center py-20">
@@ -80,11 +81,11 @@ function SearchResultsContent() {
             )}
 
             {error && (
-                <div className="p-4 rounded-lg bg-red-900/20 border border-red-500/30 text-red-200 text-center">
+                <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-center">
                     <p className="mb-3">{error}</p>
                     <button
                         onClick={fetchTrips}
-                        className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded-md text-sm transition-colors border border-red-500/30"
+                        className="px-4 py-2 bg-white hover:bg-red-50 text-red-700 rounded-md text-sm transition-colors border border-red-200 shadow-sm"
                     >
                         Try Again
                     </button>
@@ -105,13 +106,14 @@ function SearchResultsContent() {
                             attractions={trip.attractions}
                             imageUrl={trip.image_url}
                             videoUrl={trip.video_url}
+                            slug={trip.slug}
                         />
                     ))}
                 </div>
             )}
 
             {data && data.trips.length === 0 && !loading && (
-                <p className="text-gray-400">No results found.</p>
+                <p className="text-gray-500">No results found.</p>
             )}
         </div>
     );
@@ -121,19 +123,19 @@ export default function SearchPage() {
     return (
         <main className="min-h-screen">
             {/* Simple header */}
-            <div className="bg-gray-900 border-b border-gray-800 py-4 px-6 mb-8 sticky top-0 z-50">
+            <div className="bg-white border-b border-gray-200 py-4 px-6 mb-8 sticky top-0 z-50">
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <a href="/" className="flex items-center gap-3 group">
                         <div className="relative w-8 h-8">
                             <img
                                 src="/logo.png"
                                 alt="Logo"
-                                className="w-full h-full object-contain group-hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] transition-all"
+                                className="w-full h-full object-contain group-hover:drop-shadow-sm transition-all"
                             />
                         </div>
-                        <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-cyan-200">Weekend Traveller</span>
+                        <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600">Weekend Traveller</span>
                     </a>
-                    <a href="/" className="text-sm text-gray-400 hover:text-white transition-colors">New Search</a>
+                    <a href="/" className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 hover:text-cyan-600 hover:border-cyan-200 transition-all shadow-sm">New Search</a>
                 </div>
             </div>
 

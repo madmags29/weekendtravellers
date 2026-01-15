@@ -15,8 +15,8 @@ export default function BackgroundVideo() {
     useEffect(() => {
         const fetchVideo = async () => {
             try {
-                // Fetch random timelapse
-                const res = await fetch('/api/video/background?query=nature timelapse, city timelapse, clouds');
+                // Fetch random slow/cinematic travel video
+                const res = await fetch('http://localhost:8000/api/video/background?query=nature drone shot, slow cinematic travel, peaceful mountains, ocean waves slow motion, forest drone');
                 if (res.ok) {
                     const data = await res.json();
                     if (data.video_url) {
@@ -34,7 +34,7 @@ export default function BackgroundVideo() {
     if (!videoData?.video_url) return null; // Component does nothing if no video
 
     return (
-        <div className="fixed inset-0 -z-15 overflow-hidden bg-gray-900 transition-opacity duration-1000">
+        <div className="fixed inset-0 -z-50 overflow-hidden bg-gray-900 transition-opacity duration-1000">
             {/* The Video */}
             <video
                 src={videoData.video_url}

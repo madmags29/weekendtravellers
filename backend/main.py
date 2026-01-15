@@ -43,3 +43,12 @@ def get_background(query: str = "nature,travel,india"):
             "unsplash_url": None
         }
     return result
+
+@app.get("/api/video/background")
+def get_background_video(query: str = "timelapse,hyperlapse,nature motion,city lights"):
+    """Get a random background video."""
+    result = ai_service.get_random_background_video(query)
+    if not result:
+        # Fallback - return None or a specific error indicator, frontend handles fallback
+        return {"video_url": None}
+    return result

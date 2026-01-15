@@ -6,30 +6,46 @@ interface TripCardProps {
     description: string;
     price: string;
     imageUrl?: string;
+    videoUrl?: string; // New prop
     duration?: string;
     rating?: number;
     attractions?: string[];
 }
 
-export default function TripCard({ title, location, description, price, imageUrl, duration, rating, attractions }: TripCardProps) {
+export default function TripCard({ title, location, description, price, imageUrl, videoUrl, duration, rating, attractions }: TripCardProps) {
     return (
         <div className="flex flex-col rounded-2xl border border-gray-800 bg-gray-900 shadow-xl hover:bg-gray-800 transition-all duration-300 overflow-hidden group">
-            {imageUrl && (
-                <div className="relative h-48 w-full overflow-hidden">
+            <div className="relative h-48 w-full overflow-hidden">
+                {/* Image (Always visible initially, hidden if video plays and covers it? Or just z-index swap) */}
+                {imageUrl && (
                     <Image
                         src={imageUrl}
                         alt={title}
                         fill
                         className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent"></div>
-                    {rating && (
-                        <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-md text-white px-2 py-1 rounded-lg flex items-center gap-1 text-sm border border-white/10">
-                            <span className="text-yellow-400">★</span> {rating}
-                        </div>
-                    )}
-                </div>
-            )}
+                )}
+
+                {/* Video (Visible on hover if provided) */}
+                {videoUrl && (
+                    <video
+                        src={videoUrl}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                    />
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent pointer-events-none"></div>
+
+                {rating && (
+                    <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-md text-white px-2 py-1 rounded-lg flex items-center gap-1 text-sm border border-white/10 z-10">
+                        <span className="text-yellow-400">★</span> {rating}
+                    </div>
+                )}
+            </div>
             <div className="p-6 flex flex-col flex-grow">
                 <div className="flex justify-between items-start mb-2">
                     <div>

@@ -15,6 +15,7 @@ interface Trip {
     rating?: number;
     attractions?: string[];
     image_url?: string;
+    video_url?: string;
 }
 
 interface SearchResponse {
@@ -103,6 +104,7 @@ function SearchResultsContent() {
                             rating={trip.rating}
                             attractions={trip.attractions}
                             imageUrl={trip.image_url}
+                            videoUrl={trip.video_url}
                         />
                     ))}
                 </div>

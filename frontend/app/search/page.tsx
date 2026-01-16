@@ -136,7 +136,16 @@ export default function SearchPage() {
                         </div>
                         <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600">Weekend Traveller</span>
                     </a>
-                    <a href="/" className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 hover:text-cyan-600 hover:border-cyan-200 transition-all shadow-sm">New Search</a>
+
+                    <a href="/" className="group flex items-center gap-2 text-gray-500 hover:text-cyan-600 transition-colors">
+                        <div className="p-2 rounded-full bg-gray-100 border border-gray-200 group-hover:bg-cyan-50 group-hover:border-cyan-100 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M19 12H5" />
+                                <path d="M12 19l-7-7 7-7" />
+                            </svg>
+                        </div>
+                        <span className="font-medium text-sm">Back to Home</span>
+                    </a>
                 </div>
             </div>
 

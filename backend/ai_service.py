@@ -8,18 +8,24 @@ from openai import OpenAI
 # Load environment variables
 load_dotenv()
 
-# Initialize AI Client (Grok or OpenAI)
-client = None
-MODEL_NAME = "gpt-3.5-turbo"
+# Initialize OpenAI Client
+openai_api_key = os.getenv("OPENAI_API_KEY")
+grok_api_key = os.getenv("GROK_API_KEY")
 
-if os.getenv("OPENAI_API_KEY"):
+client = None
+MODEL_NAME = None # Initialize MODEL_NAME
+
+if openai_api_key:
     try:
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        # Standard OpenAI
+        client = OpenAI(api_key=openai_api_key)
+        MODEL_NAME = "gpt-3.5-turbo" # Default model for OpenAI
         print("Using OpenAI API")
     except Exception as e:
         print(f"Failed to init OpenAI: {e}")
-elif os.getenv("GROK_API_KEY"):
+elif grok_api_key:
     try:
+        # Fallback to Grok
         client = OpenAI(
             api_key=os.getenv("GROK_API_KEY"),
             base_url="https://api.x.ai/v1"
@@ -126,11 +132,65 @@ class TripAI:
         dest = next((d for d in self.destinations if d.get("slug") == slug), None)
         if dest:
             # Enrich with Pexels
-            query = dest.get("Destination", "") + " " + dest.get("Type", "travel")
-            media = fetch_pexels_media(query)
-            dest["image_url"] = media["image_url"]
-            dest["video_url"] = media["video_url"]
+            try:
+                query = dest.get("Destination", "") + " " + dest.get("Type", "travel")
+                media = fetch_pexels_media(query)
+                dest["image_url"] = media["image_url"]
+                dest["video_url"] = media["video_url"]
+            except Exception as e:
+                print(f"Error fetching media for {slug}: {e}")
+                # Fallbacks or keep existing if any
+                if "image_url" not in dest: dest["image_url"] = None
+                if "video_url" not in dest: dest["video_url"] = None
         return dest
+
+    def generate_itinerary(self, destination: str, query_context: str) -> dict:
+        """
+        Generate a 3-day itinerary using Grok/OpenAI.
+        """
+        if not client:
+            return {"error": "AI Client not initialized"}
+
+        prompt = f"""
+        Act as a luxury travel planner.
+        Create a 3-day itinerary for a trip to {destination}.
+        User Query Context: "{query_context}"
+        
+        Style: "Leaving with..." poetic footer, highly detailed.
+        
+        Return STRICT JSON format ONLY:
+        {{
+            "header": "A warm, engaging header about {destination}",
+            "days": [
+                {{
+                    "day": 1,
+                    "title": "Theme of Day 1",
+                    "activities": ["Activity 1", "Activity 2", "Dinner at..."]
+                }},
+                ... (Day 2, Day 3)
+            ],
+            "packing_list": ["Item 1", "Item 2", "Item 3", "Item 4"],
+            "weather_note": "A brief note about expected weather",
+            "waypoints": ["Stop 1", "Stop 2", "Stop 3", "Stop 4"]
+        }}
+        """
+
+        try:
+            model_name = "gpt-4o" if os.getenv("OPENAI_API_KEY") else "grok-2-latest"
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": "You are a helpful travel assistant that outputs strict JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                response_format={"type": "json_object"}
+            )
+            content = response.choices[0].message.content
+            return json.loads(content)
+        except Exception as e:
+            print(f"AI Generation Error: {e}")
+            return {"error": str(e)}
 
     def get_suggestions(self, query: str) -> list:
         """Get a list of destination names matching the query."""
@@ -246,25 +306,59 @@ class TripAI:
         query_lower = query.lower()
         matches = []
         
-        # 1. Keyword Search
+        # 1. Smarter Keyword Search
+        tokens = query_lower.split()
+        stopwords = {"trip", "travel", "days", "day", "night", "nights", "to", "in", "for", "a", "an", "the", "near", "weekend", "holiday", "vacation"}
+        filtered_tokens = [t for t in tokens if t not in stopwords and len(t) > 2]
+
         for dest in self.destinations:
+            dest_name = dest.get('Destination', '').lower()
+            dest_state = dest.get('State / UT', '').lower()
+            
+            # Priority 1: Exact Destination Name in Query (e.g. "Jaipur" in "Jaipur trip")
+            if dest_name and dest_name in query_lower:
+                matches.append(dest)
+                continue
+
+            # Priority 2: Destination Name contains a significant token (fuzzy) working? 
+            # Risk: "Goa" matches "Goat"? No, token matching is safer.
+            # Let's check if any filtered token is the destination name
+            if any(token == dest_name for token in filtered_tokens):
+                matches.append(dest)
+                continue
+                
+            # Priority 3: Search text (fallback)
             search_text = (
                 f"{dest.get('Destination')} {dest.get('State / UT')} "
                 f"{dest.get('Type')} {dest.get('Famous For')}"
             ).lower()
-            if query_lower in search_text:
-                matches.append(dest)
+            
+            # Check if all significant tokens vary? No, let's keep it simple.
+            # If the user asks "Beaches in India", we want matching tags.
+            if any(token in search_text for token in filtered_tokens):
+                # Only add if not already added? 
+                # matches.append(dest) - this might be too broad (returns many).
+                # better to rely on priority 1 & 2 for explicit cities.
+                pass
+
+        # If no explicit city matches found, try broader tag/description search
+        if not matches:
+             for dest in self.destinations:
+                search_text = (
+                    f"{dest.get('Destination')} {dest.get('State / UT')} "
+                    f"{dest.get('Type')} {dest.get('Famous For')}"
+                ).lower()
+                
+                # Require at least one matching token
+                if any(t in search_text for t in filtered_tokens):
+                     matches.append(dest)
+
+        # 2. Semantic Search (Disabled/Optional)
+        if len(matches) < 1 and client:
+             # ... existing semantic search logic ...
+             pass
         
-        # 2. Semantic Search (if few matches)
-        if len(matches) < 2 and client:
-            print("Using OpenAI for semantic search...")
-            semantic_matches = self._match_with_openai(query)
-            existing_ids = {m.get('id') for m in matches}
-            for m in semantic_matches:
-                if m.get('id') not in existing_ids:
-                    matches.append(m)
-        
-        # 3. Fallback
+        # 3. Fallback (Random) ONLY if absolutely nothing found
         if not matches:
              matches = random.sample(self.destinations, min(3, len(self.destinations)))
         
@@ -326,6 +420,7 @@ class TripAI:
             response = requests.get(url, headers=headers, params=params, timeout=5)
             if response.status_code == 200:
                 data = response.json()
+                print(f"Pexels Video Search: Found {len(data.get('videos', []))} videos for query '{query}'")
                 if data.get("videos"):
                     video_data = data["videos"][0]
                     video_files = video_data["video_files"]
@@ -338,4 +433,27 @@ class TripAI:
                     }
         except Exception as e:
             print(f"Error fetching background video: {e}")
+            return None
+        
+        print("No videos found or error in processing Pexels response.")
         return None
+
+    def get_suggestions(self, query: str) -> list:
+        """Get autocomplete suggestions for destinations."""
+        if not query or not self.destinations:
+            return []
+        
+        query = query.lower()
+        suggestions = []
+        
+        seen = set()
+        for dest in self.destinations:
+            name = dest.get("Destination")
+            if name and query in name.lower() and name not in seen:
+                suggestions.append(name)
+                seen.add(name)
+                
+            if len(suggestions) >= 10:
+                break
+                
+        return suggestions

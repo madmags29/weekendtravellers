@@ -13,11 +13,12 @@ export default function Typewriter({ text, speed = 30, className = '', onComplet
     const [displayedText, setDisplayedText] = useState('');
 
     useEffect(() => {
-        setDisplayedText(''); // Reset on text change
+        setDisplayedText('');
         let i = 0;
         const timer = setInterval(() => {
             if (i < text.length) {
-                setDisplayedText((prev) => prev + text.charAt(i));
+                const nextCharIndex = i + 1;
+                setDisplayedText(text.slice(0, nextCharIndex));
                 i++;
             } else {
                 clearInterval(timer);

@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -52,4 +52,34 @@ def get_destination(slug: str):
     result = ai_service.get_destination_by_slug(slug)
     if not result:
         return {"error": "Destination not found"}
+    if not result:
+        return {"error": "Destination not found"}
     return result
+
+class ItineraryRequest(BaseModel):
+    destination: str
+    query: str
+
+@app.post("/api/generate-itinerary")
+def generate_itinerary(req: ItineraryRequest):
+    """Generate AI itinerary using Grok/OpenAI."""
+    return ai_service.generate_itinerary(req.destination, req.query)
+
+@app.post("/api/login")
+def login(response: Response):
+    """
+    Sets a secure cookie as requested.
+    Note: 'secure=True' requires HTTPS (except on localhost).
+    """
+    # Demo token - in a real app, generate a JWT here
+    jwt_token = "demo_secure_token_12345"
+    
+    response.set_cookie(
+        key="token",
+        value=jwt_token,
+        httponly=True,
+        secure=True,       # As requested
+        samesite="strict", # As requested
+        max_age=7 * 24 * 60 * 60 # 7 days
+    )
+    return {"message": "Logged in successfully", "note": "Secure cookie set"}

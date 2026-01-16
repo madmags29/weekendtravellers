@@ -16,16 +16,38 @@ export default function BackgroundVideo() {
         const fetchVideo = async () => {
             try {
                 // Fetch random slow/cinematic travel video
-                const res = await fetch('http://localhost:8000/api/video/background?query=nature drone shot, slow cinematic travel, peaceful mountains, ocean waves slow motion, forest drone');
-                if (res.ok) {
+                const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                const query = encodeURIComponent("slow motion indian travel, india drone, kerala backwaters, himalaya drone, rajasthan palace");
+
+                console.log(`Fetching background video from: ${API_BASE}/api/video/background`);
+
+                const res = await fetch(`${API_BASE}/api/video/background?query=${query}`)
+                    .catch(err => {
+                        console.error("Fetch network error:", err);
+                        return null;
+                    });
+
+                if (res && res.ok) {
                     const data = await res.json();
                     if (data.video_url) {
+                        console.log("Video URL fetched:", data.video_url);
                         setVideoData(data);
+                        return;
                     }
+                } else {
+                    console.warn("Video fetch failed or invalid response", res?.status);
                 }
             } catch (error) {
                 console.error("Failed to fetch background video:", error);
             }
+
+            // Fallback if API fails (Indian specific fallback)
+            console.log("Using fallback video");
+            setVideoData({
+                video_url: "https://videos.pexels.com/video-files/20456073/20456073-uhd_2560_1440_30fps.mp4", // India specific video (e.g. Himalayas/Monasteries)
+                photographer_name: "Generic India Travel",
+                photographer_url: "https://www.pexels.com/search/videos/india/"
+            });
         };
 
         fetchVideo();

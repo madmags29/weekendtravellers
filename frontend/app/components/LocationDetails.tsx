@@ -21,26 +21,47 @@ interface Destination {
 interface LocationDetailsProps {
     slug: string;
     onBack?: () => void;
+    overrideData?: any; // Accept AI enhanced data
 }
 
-export default function LocationDetails({ slug, onBack }: LocationDetailsProps) {
+export default function LocationDetails({ slug, onBack, overrideData }: LocationDetailsProps) {
     const [destination, setDestination] = useState<Destination | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (overrideData) {
+            setDestination(prev => ({
+                ...prev,
+                ...overrideData,
+                // Map AI fields to Destination interface if needed
+                "Best Time to Visit": overrideData.best_time || prev?.["Best Time to Visit"] || "Oct - Mar",
+            } as Destination));
+            if (!slug) setLoading(false); // If just showing override
+        }
+
         if (slug) {
-            const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-            fetch(`${API_BASE}/api/destinations/${slug}`)
+            // Fetch foundational data (coordinates, images, etc.) even if override exists
+            // Use relative path to leverage Next.js proxy (avoids CORS/Network issues)
+            console.log("Fetching details from proxy: /api/destinations/" + slug);
+            fetch(`/api/destinations/${slug}`)
                 .then(res => res.json())
                 .then(data => {
                     if (!data.error) {
-                        setDestination(data);
+                        setDestination(prev => ({
+                            ...data,
+                            ...prev, // Keep AI overrides logic: actually we want AI to win.
+                            // Logic: default backend data < AI override
+                            ...overrideData,
+                            "Best Time to Visit": overrideData?.best_time || data["Best Time to Visit"] || "Oct - Mar"
+                        }));
                     }
                 })
                 .catch(err => console.error(err))
                 .finally(() => setLoading(false));
+        } else if (overrideData) {
+            setLoading(false);
         }
-    }, [slug]);
+    }, [slug, overrideData]);
 
     if (loading) return <div className="h-full flex items-center justify-center text-gray-400">Loading details...</div>;
     if (!destination) return <div className="h-full flex items-center justify-center text-gray-400">Destination not found</div>;
@@ -95,7 +116,7 @@ export default function LocationDetails({ slug, onBack }: LocationDetailsProps) 
                             <div className="bg-white border border-gray-100 p-6 rounded-xl shadow-sm">
                                 <h3 className="text-gray-400 text-xs uppercase tracking-wider mb-2 font-bold">Famous For</h3>
                                 <div className="flex flex-wrap gap-2">
-                                    {destination["Famous For"].split(',').map((tag, i) => (
+                                    {(destination["Famous For"] || "").split(',').map((tag: string, i: number) => (
                                         <span key={i} className="bg-cyan-50 text-cyan-700 px-3 py-1 rounded-full text-sm font-medium border border-cyan-100">
                                             {tag.trim()}
                                         </span>

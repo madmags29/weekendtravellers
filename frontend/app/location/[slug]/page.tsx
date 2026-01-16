@@ -64,7 +64,15 @@ export default function LocationPage() {
 
                 <div className="absolute bottom-0 left-0 w-full p-8 md:p-16">
                     <div className="max-w-7xl mx-auto">
-                        <Link href="/" className="text-cyan-400 hover:text-cyan-300 mb-4 inline-block">&larr; Back to Home</Link>
+                        <Link href="/" className="group flex items-center gap-2 text-cyan-400 hover:text-cyan-300 mb-6 transition-colors">
+                            <div className="p-2 rounded-full bg-black/20 backdrop-blur-sm border border-white/10 group-hover:bg-cyan-500/10 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M19 12H5" />
+                                    <path d="M12 19l-7-7 7-7" />
+                                </svg>
+                            </div>
+                            <span className="font-medium">Back to Home</span>
+                        </Link>
                         <h1 className="text-5xl md:text-7xl font-bold mb-2">{destination.Destination}</h1>
                         <p className="text-xl md:text-2xl text-gray-300 flex items-center gap-2">
                             <span className="text-cyan-500">📍</span> {destination["State / UT"]}

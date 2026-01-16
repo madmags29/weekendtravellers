@@ -41,6 +41,11 @@ def get_background_video(query: str = "timelapse,hyperlapse,nature motion,city l
         return {"video_url": None}
     return result
 
+@app.get("/api/destinations/suggest")
+def suggest_destinations(q: str):
+    """Get autocomplete suggestions."""
+    return ai_service.get_suggestions(q)
+
 @app.get("/api/destinations/{slug}")
 def get_destination(slug: str):
     """Get destination details by slug."""
@@ -48,8 +53,3 @@ def get_destination(slug: str):
     if not result:
         return {"error": "Destination not found"}
     return result
-
-@app.get("/api/destinations/suggest")
-def suggest_destinations(q: str):
-    """Get autocomplete suggestions."""
-    return ai_service.get_suggestions(q)

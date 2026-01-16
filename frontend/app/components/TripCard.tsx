@@ -11,13 +11,17 @@ interface TripCardProps {
     rating?: number;
     attractions?: string[];
     slug?: string;
+    onClick?: () => void;
 }
 
 import Link from 'next/link';
 
-export default function TripCard({ title, location, description, price, imageUrl, videoUrl, duration, rating, attractions, slug }: TripCardProps) {
+export default function TripCard({ title, location, description, price, imageUrl, videoUrl, duration, rating, attractions, slug, onClick }: TripCardProps) {
     const CardContent = (
-        <div className="flex flex-col rounded-2xl border border-gray-200 bg-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group h-full">
+        <div
+            onClick={onClick}
+            className={`flex flex-col rounded-2xl border border-gray-200 bg-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group h-full ${onClick ? 'cursor-pointer' : ''}`}
+        >
             <div className="relative h-48 w-full overflow-hidden">
                 {/* Image (Always visible initially, hidden if video plays and covers it? Or just z-index swap) */}
                 {imageUrl && (
@@ -69,7 +73,7 @@ export default function TripCard({ title, location, description, price, imageUrl
                     </div>
                 )}
 
-                <p className="text-gray-600 flex-grow leading-relaxed text-sm mb-4">{description}</p>
+                <p className="text-gray-600 flex-grow leading-relaxed text-sm mb-4 line-clamp-3">{description}</p>
 
                 {attractions && attractions.length > 0 && (
                     <div className="mb-4">
@@ -93,7 +97,7 @@ export default function TripCard({ title, location, description, price, imageUrl
         </div>
     );
 
-    if (slug) {
+    if (slug && !onClick) {
         return (
             <Link href={`/location/${slug}`} className="block h-full">
                 {CardContent}

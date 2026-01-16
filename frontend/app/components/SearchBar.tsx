@@ -10,12 +10,13 @@ export default function SearchBar() {
     const router = useRouter();
 
     const fetchSuggestions = async (val: string) => {
-        if (val.length < 2) {
+        if (val.length < 3) {
             setSuggestions([]);
             return;
         }
         try {
-            const res = await fetch(`http://localhost:8000/api/destinations/suggest?q=${encodeURIComponent(val)}`);
+            const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+            const res = await fetch(`${API_BASE}/api/destinations/suggest?q=${encodeURIComponent(val)}`);
             if (res.ok) {
                 const data = await res.json();
                 setSuggestions(data);
@@ -36,60 +37,59 @@ export default function SearchBar() {
         setQuery(suggestion);
         setSuggestions([]);
         setShowSuggestions(false);
-        router.push(`/search?q=${encodeURIComponent(suggestion)}`);
+        router.push(`/?q=${encodeURIComponent(suggestion)}`);
     };
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         setShowSuggestions(false);
         if (query.trim()) {
-            router.push(`/search?q=${encodeURIComponent(query)}`);
+            router.push(`/?q=${encodeURIComponent(query)}`);
         }
     };
 
     return (
-        <form onSubmit={handleSearch} className="w-full max-w-7xl mx-auto relative z-10" autoComplete="off">
-            <div className="relative group">
-                {/* Glow effect */}
-                <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full opacity-20 group-hover:opacity-40 blur-md transition duration-500"></div>
-
-                <div className="relative flex items-center">
-                    <input
-                        type="text"
-                        name="search"
-                        value={query}
-                        onChange={handleInputChange}
-                        onFocus={() => setShowSuggestions(true)}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
-                        placeholder="Type a city (e.g., Goa, Manali)..."
-                        className="w-full px-8 py-6 text-2xl text-gray-900 placeholder-gray-400 bg-white border border-gray-200 rounded-full focus:outline-none focus:ring-4 focus:ring-cyan-500/10 focus:border-cyan-500 shadow-2xl transition-all duration-300"
-                    />
-                    <button
-                        type="submit"
-                        className="absolute right-3 top-3 bottom-3 px-8 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-full transition-all duration-300 font-bold text-lg shadow-lg shadow-cyan-900/20"
-                    >
-                        Search
-                    </button>
-                </div>
-
-                {/* Suggestions Dropdown */}
-                {showSuggestions && suggestions.length > 0 && (
-                    <ul className="absolute left-4 right-4 top-full mt-4 bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-2xl z-50">
-                        {suggestions.map((suggestion, index) => (
-                            <li
-                                key={index}
-                                onClick={() => handleSelectSuggestion(suggestion)}
-                                className="px-8 py-4 hover:bg-gray-50 cursor-pointer text-gray-700 hover:text-cyan-600 transition-colors border-b border-gray-50 last:border-none text-lg flex items-center gap-3"
-                            >
-                                <span className="text-gray-400">📍</span> {suggestion}
-                            </li>
-                        ))}
-                    </ul>
-                )}
+        <form onSubmit={handleSearch} className="w-full relative z-50" autoComplete="off">
+            <div className="relative flex items-center bg-white border border-gray-200 rounded-full shadow-lg hover:shadow-xl transition-shadow duration-300">
+                <span className="pl-6 text-gray-400">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </span>
+                <input
+                    type="text"
+                    name="search"
+                    value={query}
+                    onChange={handleInputChange}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    placeholder="Ask anything..." // Changed placeholder to match image
+                    className="w-full px-4 py-4 text-lg text-gray-900 placeholder-gray-400 bg-transparent border-none rounded-full focus:ring-0 focus:outline-none"
+                />
+                <button
+                    type="submit"
+                    className="mr-2 p-3 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition-colors"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
             </div>
-            <p className="text-center text-gray-400 text-sm mt-4 font-medium tracking-wide opacity-80">
-                Powered by AI to plan trips tailored just for you.
-            </p>
+
+            {/* Suggestions Dropdown (Bottom Up) */}
+            {showSuggestions && suggestions.length > 0 && (
+                <ul className="absolute left-0 right-0 bottom-full mb-4 bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-2xl">
+                    {suggestions.map((suggestion, index) => (
+                        <li
+                            key={index}
+                            onClick={() => handleSelectSuggestion(suggestion)}
+                            className="px-6 py-3 hover:bg-gray-50 cursor-pointer text-gray-700 hover:text-cyan-600 transition-colors border-b border-gray-50 last:border-none flex items-center gap-3"
+                        >
+                            <span className="text-gray-400">📍</span> {suggestion}
+                        </li>
+                    ))}
+                </ul>
+            )}
         </form>
     );
 }

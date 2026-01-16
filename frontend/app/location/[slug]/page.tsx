@@ -28,7 +28,8 @@ export default function LocationPage() {
 
     useEffect(() => {
         if (slug) {
-            fetch(`http://localhost:8000/api/destinations/${slug}`)
+            const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+            fetch(`${API_BASE}/api/destinations/${slug}`)
                 .then(res => res.json())
                 .then(data => {
                     if (!data.error) {
@@ -63,7 +64,7 @@ export default function LocationPage() {
 
                 <div className="absolute bottom-0 left-0 w-full p-8 md:p-16">
                     <div className="max-w-7xl mx-auto">
-                        <Link href="/search" className="text-cyan-400 hover:text-cyan-300 mb-4 inline-block">&larr; Back to Search</Link>
+                        <Link href="/" className="text-cyan-400 hover:text-cyan-300 mb-4 inline-block">&larr; Back to Home</Link>
                         <h1 className="text-5xl md:text-7xl font-bold mb-2">{destination.Destination}</h1>
                         <p className="text-xl md:text-2xl text-gray-300 flex items-center gap-2">
                             <span className="text-cyan-500">📍</span> {destination["State / UT"]}

@@ -8,13 +8,26 @@ from openai import OpenAI
 # Load environment variables
 load_dotenv()
 
-# Initialize OpenAI Client (Graceful fallback)
+# Initialize AI Client (Grok or OpenAI)
 client = None
+MODEL_NAME = "gpt-3.5-turbo"
+
 if os.getenv("OPENAI_API_KEY"):
     try:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        print("Using OpenAI API")
     except Exception as e:
         print(f"Failed to init OpenAI: {e}")
+elif os.getenv("GROK_API_KEY"):
+    try:
+        client = OpenAI(
+            api_key=os.getenv("GROK_API_KEY"),
+            base_url="https://api.x.ai/v1"
+        )
+        MODEL_NAME = "grok-2-latest"
+        print("Using Grok API")
+    except Exception as e:
+        print(f"Failed to init Grok: {e}")
 
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
@@ -92,7 +105,7 @@ class TripAI:
         
         try:
             response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model=MODEL_NAME,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=150,
                 temperature=0.3
@@ -135,6 +148,94 @@ class TripAI:
         
         return suggestions[:5]
 
+    def _generate_itinerary(self, destination: str, state: str, type_of_trip: str, query: str, duration: str = "3 Days") -> dict:
+        """Generate a custom itinerary using AI."""
+        # Parse duration
+        try:
+            num_days = int(''.join(filter(str.isdigit, str(duration))))
+            if num_days < 1: num_days = 2
+            if num_days > 5: num_days = 5 # Cap at 5 to avoid token limits
+        except:
+            num_days = 2
+
+        # Default fallback
+        default_header = f"Here's a thoughtfully paced {num_days}-day itinerary for your trip to {destination}."
+        if " to " in query.lower():
+             default_header = f"Here's a thoughtfully paced {num_days}-day itinerary for your trip: {query.title()}."
+
+        # Generate default days structure
+        default_days = []
+        for d in range(1, num_days + 1):
+            default_days.append({
+                "day_label": f"Day {d}",
+                "title": f"Exploring {destination}",
+                "subtitle": "Discovering local gems",
+                "morning": ["Visit a popular landmark.", "Enjoy local breakfast."],
+                "afternoon": ["Lunch at a verified spot.", "Visit a museum or park."],
+                "evening": ["Sunset views.", "Dinner at a top-rated restaurant."]
+            })
+
+        default_itinerary = {
+            "header": default_header,
+            "days": default_days,
+            "footer": "Ready to finalize this? I can adjust the pace, upgrade your stay, or secure your dinner reservations for you.",
+            "waypoints": ["City Center", "Local Market"]
+        }
+
+        if not client:
+            return default_itinerary
+        
+        prompt = f"""
+        Act as a **Luxury Travel Concierge** planning a trip to {destination}, {state} (Type: {type_of_trip}).
+        User's Search Query: "{query}" (Context: {query}).
+        Duration: {num_days} Days.
+        
+        **Style & Tone**:
+        - Curated, exclusive, and "in-the-know".
+        - "Thoughtfully paced" and "Verified".
+        - Include **specific details**: Signature dishes at restaurants, best photo spots, entry fees (approx), and exact travel times.
+        
+        Return strictly valid JSON with this structure:
+        {{
+            "header": "A warm, professional opening. E.g., 'I’ve curated a bespoke {num_days}-day itinerary for your journey from [Origin] to {destination}...' ",
+            "days": [
+                {{
+                    "day_label": "Day 1",
+                    "title": "A captivating title",
+                    "subtitle": "Brief vibe summary.",
+                    "morning": ["Time - Activity: Detail", "Lunch tip"],
+                    "afternoon": ["Activity 1", "Activity 2"],
+                    "evening": ["Sunset spot", "Dinner tip"]
+                }},
+                ... (Repeat for ALL {num_days} days)
+            ],
+            "footer": "Concierge closing.",
+            "waypoints": ["List of 3-4 specific real locations"]
+        }}
+        
+        IMPORTANT: Generate detailed plans for ALL {num_days} DAYS. Use REAL businesses.
+        Do not include markdown formatting. Just the pure JSON string.
+        """
+        
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=1500, # Increased for longer plans
+                temperature=0.7
+            )
+            content = response.choices[0].message.content.strip()
+            # Clean up potential markdown
+            if content.startswith("```json"):
+                content = content.replace("```json", "").replace("```", "")
+            if content.startswith("```"):
+                content = content.replace("```", "")
+            
+            return json.loads(content)
+        except Exception as e:
+            print(f"Error generating AI itinerary: {e}")
+            return default_itinerary
+
     def generate_trips(self, query: str) -> dict:
         """
         Search for trips within the loaded JSON data.
@@ -172,10 +273,21 @@ class TripAI:
         
         # Transform & Enrich
         trips = []
-        for dest in results:
+        for i, dest in enumerate(results):
             image_query = dest.get("Destination") + " " + dest.get("Type", "travel")
             media = fetch_pexels_media(image_query)
             
+            # Generate detailed itinerary ONLY for the top result (to save latency/tokens)
+            itinerary = None
+            if i == 0:
+                itinerary = self._generate_itinerary(
+                    dest.get("Destination"), 
+                    dest.get("State / UT"), 
+                    dest.get("Type", "Travel"),
+                    query, # Pass the original query
+                    str(dest.get("Ideal Duration", "3 Days")) # Pass duration
+                )
+
             trips.append({
                 "id": dest.get("id"),
                 "slug": dest.get("slug"),
@@ -188,7 +300,8 @@ class TripAI:
                 "attractions": [t.strip() for t in dest.get("Famous For", "").split(",")],
                 "image_url": media["image_url"] or "/images/default_trip.png",
                 "video_url": media["video_url"],
-                "tags": [dest.get("Type"), dest.get("Best Time to Visit")]
+                "tags": [dest.get("Type"), dest.get("Best Time to Visit")],
+                "itinerary": itinerary # Add existing or None
             })
 
         return {"trips": trips}
